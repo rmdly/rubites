@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Rubites runner - coming soon
+puts "Rubites runner not yet implemented"
