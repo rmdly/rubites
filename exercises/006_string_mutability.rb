@@ -5,7 +5,7 @@
 # .freeze makes a string immutable.
 #
 # Expected output: HELLO
-# Expected output: HELLO
+# Expected output: true
 # Expected output: true
 
 greeting = "hello"

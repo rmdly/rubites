@@ -6,7 +6,7 @@
 #
 # Expected output: Alice
 # Expected output: 30
-# Expected output: {:name=>"Alice", :age=>30, :city=>"London"}
+# Expected output: {name: "Alice", age: 30, city: "London"}
 
 # TODO: Fix the hash - use symbol keys
 person = { "name" => "Alice", "age" => 30 }

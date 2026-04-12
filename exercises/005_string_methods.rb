@@ -5,7 +5,7 @@
 #
 # Expected output: HELLO
 # Expected output: world
-# Expected output: olleh
+# Expected output: olleH
 # Expected output: 5
 
 word = "Hello"
