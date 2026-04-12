@@ -1,5 +1,108 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Rubites runner - coming soon
-puts "Rubites runner not yet implemented"
+class RubitesRunner
+  EXERCISES_DIR = File.join(__dir__, "..", "exercises")
+
+  def run
+    exercises = scan_exercises
+    if exercises.empty?
+      puts "No exercises found in exercises/ directory."
+      exit 1
+    end
+
+    passed = 0
+
+    exercises.each do |exercise|
+      title = extract_title(exercise)
+      expected = extract_expected_output(exercise)
+
+      if expected.nil?
+        puts "Warning: #{File.basename(exercise)} has no Expected output marker. Skipping."
+        next
+      end
+
+      actual, error, success = run_exercise(exercise)
+
+      if !success
+        print_error(title, exercise, error)
+        print_progress(passed, exercises.size)
+        exit 1
+      elsif actual.strip != expected.strip
+        print_mismatch(title, exercise, expected.strip, actual.strip)
+        print_progress(passed, exercises.size)
+        exit 1
+      else
+        puts "\u2713 #{title}"
+        passed += 1
+      end
+    end
+
+    print_progress(passed, exercises.size)
+    puts
+    puts "\u2605 Congratulations! You've completed all #{exercises.size} Rubites exercises!"
+  end
+
+  private
+
+  def scan_exercises
+    Dir.glob(File.join(EXERCISES_DIR, "*.rb")).sort
+  end
+
+  def extract_title(filepath)
+    File.foreach(filepath) do |line|
+      if line =~ /^# (Exercise \d+:.*)$/
+        return $1
+      end
+    end
+    "Unknown Exercise"
+  end
+
+  def extract_expected_output(filepath)
+    lines = []
+    File.foreach(filepath) do |line|
+      if line =~ /^# Expected output:\s*(.*)$/
+        lines << $1
+      end
+    end
+    lines.empty? ? nil : lines.join("\n")
+  end
+
+  def run_exercise(filepath)
+    require "open3"
+    stdout, stderr, status = Open3.capture3("ruby", filepath)
+    [stdout, stderr, status.success?]
+  end
+
+  def print_error(title, filepath, error)
+    puts
+    puts "\u2192 #{title}"
+    puts "  \u2717 Error!"
+    puts
+    error.each_line { |line| puts "  #{line}" }
+    puts
+    puts "  Edit #{relative_path(filepath)} and run bin/rubites again."
+  end
+
+  def print_mismatch(title, filepath, expected, actual)
+    puts
+    puts "\u2192 #{title}"
+    puts "  \u2717 Output doesn't match"
+    puts
+    puts "  Expected: #{expected}"
+    puts "  Got:      #{actual}"
+    puts
+    puts "  Edit #{relative_path(filepath)} and run bin/rubites again."
+  end
+
+  def print_progress(passed, total)
+    puts
+    puts "  Progress: #{passed}/#{total} exercises completed"
+  end
+
+  def relative_path(filepath)
+    filepath.sub("#{File.expand_path(File.join(__dir__, ".."))}/", "")
+  end
+end
+
+RubitesRunner.new.run
