@@ -1,6 +1,6 @@
 # Rubites
 
-Learn Ruby fundamentals by fixing broken code. Inspired by [Ziglings](https://codeberg.org/ziglings/exercises/).
+Learn Ruby fundamentals by fixing broken code.
 
 ## Requirements
 
@@ -17,8 +17,6 @@ Learn Ruby fundamentals by fixing broken code. Inspired by [Ziglings](https://co
 ## How It Works
 
 Each exercise in `exercises/` has broken or incomplete Ruby code. The comments explain the concept and tell you what the expected output should be. Fix the code, run the runner, and move on.
-
-If you get stuck, check the `solutions/` directory for reference answers.
 
 ## Topics Covered
 
@@ -41,11 +39,3 @@ If you get stuck, check the `solutions/` directory for reference answers.
 ## Progress
 
 The runner tracks your progress automatically - it runs through exercises in order and stops at the first one that fails.
-
-## Contributing
-
-Pull requests welcome! If you'd like to add exercises, follow the format in the existing files.
-
-## Licence
-
-MIT
