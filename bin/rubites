@@ -57,6 +57,10 @@ class RubitesRunner
     @senior ? SENIOR_EXERCISES_DIR : EXERCISES_DIR
   end
 
+  def run_command
+    @senior ? "bin/rubites --senior" : "bin/rubites"
+  end
+
   def scan_exercises
     Dir.glob(File.join(exercises_dir, "*.rb")).sort
   end
@@ -93,7 +97,7 @@ class RubitesRunner
     puts
     error.each_line { |line| puts "  #{line}" }
     puts
-    puts "  Edit #{relative_path(filepath)} and run bin/rubites again."
+    puts "  Edit #{relative_path(filepath)} and run #{run_command} again."
   end
 
   def print_mismatch(title, filepath, expected, actual)
@@ -104,7 +108,7 @@ class RubitesRunner
     puts "  Expected: #{expected}"
     puts "  Got:      #{actual}"
     puts
-    puts "  Edit #{relative_path(filepath)} and run bin/rubites again."
+    puts "  Edit #{relative_path(filepath)} and run #{run_command} again."
   end
 
   def print_progress(passed, total)
