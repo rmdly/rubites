@@ -38,6 +38,21 @@ If you get stuck, check the `solutions/` directory for reference answers.
 | 033-034 | Error Handling |
 | 035 | Pattern Matching |
 
+## Senior Challenges
+
+Completed the fundamentals? Try the senior track:
+
+```
+bin/rubites --senior
+```
+
+These exercises cover advanced Ruby concurrency — Fibers and Ractors. No solutions provided (yet).
+
+| Exercises | Topic |
+|-----------|-------|
+| 001 | Fibers |
+| 002 | Ractors |
+
 ## Progress
 
 The runner tracks your progress automatically - it runs through exercises in order and stops at the first one that fails.
