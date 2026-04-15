@@ -2,15 +2,23 @@
 # frozen_string_literal: true
 
 class RubitesRunner
-  EXERCISES_DIR = File.join(__dir__, "..", "exercises")
+  EXERCISES_DIR = File.expand_path(File.join(__dir__, "..", "exercises"))
+  SENIOR_EXERCISES_DIR = File.expand_path(File.join(__dir__, "..", "senior-exercises"))
+
+  def initialize(senior: false)
+    @senior = senior
+  end
 
   def run
     exercises = scan_exercises
+    dir_name = @senior ? "senior-exercises" : "exercises"
+
     if exercises.empty?
-      puts "No exercises found in exercises/ directory."
+      puts "No exercises found in #{dir_name}/ directory."
       exit 1
     end
 
+    label = @senior ? "Senior Rubites" : "Rubites"
     passed = 0
 
     exercises.each do |exercise|
@@ -40,13 +48,17 @@ class RubitesRunner
 
     print_progress(passed, exercises.size)
     puts
-    puts "\u2605 Congratulations! You've completed all #{exercises.size} Rubites exercises!"
+    puts "\u2605 Congratulations! You've completed all #{exercises.size} #{label} exercises!"
   end
 
   private
 
+  def exercises_dir
+    @senior ? SENIOR_EXERCISES_DIR : EXERCISES_DIR
+  end
+
   def scan_exercises
-    Dir.glob(File.join(EXERCISES_DIR, "*.rb")).sort
+    Dir.glob(File.join(exercises_dir, "*.rb")).sort
   end
 
   def extract_title(filepath)
@@ -105,4 +117,5 @@ class RubitesRunner
   end
 end
 
-RubitesRunner.new.run
+senior = ARGV.include?("--senior")
+RubitesRunner.new(senior: senior).run
