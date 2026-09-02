@@ -1,0 +1,39 @@
+AllCops:
+  NewCops: disable
+  TargetRubyVersion: 3.4
+
+# DHH indents methods under the visibility modifier.
+Layout/IndentationConsistency:
+  EnforcedStyle: indented_internal_methods
+
+# He prefers expanded conditionals; rubocop wants the opposite.
+Style/GuardClause:
+  Enabled: false
+Style/IfUnlessModifier:
+  Enabled: false
+
+# Comments are a smell, so don't demand them.
+Style/Documentation:
+  Enabled: false
+Style/FrozenStringLiteralComment:
+  Enabled: true
+
+# Omakase leaves length and complexity to judgement.
+Metrics:
+  Enabled: false
+Layout/LineLength:
+  Max: 120
+
+Style/StringLiterals:
+  Enabled: false
+Style/StringLiteralsInInterpolation:
+  Enabled: false
+
+# Contradicts the house style, which puts no blank line under the modifier.
+Layout/EmptyLinesAroundAccessModifier:
+  Enabled: false
+
+# Annotated tokens can't take splat arguments (format('%d:%02d', *divmod)),
+# and Rails itself uses plain tokens throughout.
+Style/FormatStringToken:
+  Enabled: false

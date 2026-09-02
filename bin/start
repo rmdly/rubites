@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# The front door: cd into the repo and type `start`.
+exec File.expand_path('rubites', __dir__), *ARGV

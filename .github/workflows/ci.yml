@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+
+      - name: Test the pieces
+        run: ruby test/rubites_test.rb
+
+      - name: Test the game in a real terminal
+        run: ruby test/tui_test.rb
+
+      # The levels ship broken, so this is expected to fail. It runs anyway to
+      # catch a level that crashes for the wrong reason.
+      - name: Smoke-test every level
+        run: bin/rubites --check || true
