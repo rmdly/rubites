@@ -99,15 +99,15 @@ module Rubites
       ROOT = File.expand_path('../..', __dir__)
       TIMEOUT = 10
 
-      attr_reader :exercises_dir, :state_dir
+      attr_reader :levels_dir, :state_dir
 
-      def initialize(exercises_dir:, state_dir:, args: [], rows: 34, cols: 92)
-        @exercises_dir = exercises_dir
+      def initialize(levels_dir:, state_dir:, args: [], rows: 34, cols: 92)
+        @levels_dir = levels_dir
         @state_dir = state_dir
         @screen = VirtualScreen.new(rows, cols)
         @buffer = +''.b
 
-        env = { 'RUBITES_EXERCISES' => exercises_dir, 'RUBITES_STATE' => state_dir, 'USER' => 'tester' }
+        env = { 'RUBITES_LEVELS' => levels_dir, 'RUBITES_STATE' => state_dir, 'USER' => 'tester' }
         @reader, @writer, @pid = PTY.spawn(env, File.join(ROOT, 'bin', 'rubites'), *args)
         @reader.winsize = [rows, cols]
       end

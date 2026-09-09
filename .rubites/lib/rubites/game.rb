@@ -12,10 +12,10 @@ module Rubites
     # Raw mode delivers Ctrl-C as a byte rather than a signal.
     QUIT_KEYS = ['q', "\C-c"].freeze
 
-    def initialize(exercises_dir:, progress:, screen:,
+    def initialize(levels_dir:, progress:, screen:,
                    runner: Runner.new, watcher: Watcher.new, author: false, start_at: nil)
-      @exercises_dir = exercises_dir
-      @exercises = Exercise.load_all(exercises_dir)
+      @levels_dir = levels_dir
+      @exercises = Exercise.load_all(levels_dir)
       @progress = progress
       @screen = screen
       @runner = runner
@@ -99,7 +99,7 @@ module Rubites
         return if Time.now - @scanned_at < RESCAN
 
         @scanned_at = Time.now
-        found = Exercise.load_all(@exercises_dir)
+        found = Exercise.load_all(@levels_dir)
         reload(found) unless found.map(&:basename) == @exercises.map(&:basename)
       end
 

@@ -10,7 +10,7 @@ require_relative 'support/terminal'
 # is covered rather than only the classes underneath it.
 class TuiTest < Minitest::Test
   def setup
-    @exercises = Dir.mktmpdir('rubites-exercises')
+    @levels = Dir.mktmpdir('rubites-levels')
     @state = Dir.mktmpdir('rubites-state')
     @terminals = []
 
@@ -21,7 +21,7 @@ class TuiTest < Minitest::Test
 
   def teardown
     @terminals.each(&:close)
-    FileUtils.remove_entry(@exercises)
+    FileUtils.remove_entry(@levels)
     FileUtils.remove_entry(@state)
   end
 
@@ -253,7 +253,7 @@ class TuiTest < Minitest::Test
     game = at_first_exercise
     game.wait_for(/not yet/)
 
-    File.delete(File.join(@exercises, '1.0_first.rb'))
+    File.delete(exercise_path('1.0_first'))
     # The next scan re-resolves the current exercise.
     game.wait_for(/EXERCISE 1\.[01]/)
 
@@ -312,7 +312,7 @@ class TuiTest < Minitest::Test
 
     def play(args: [])
       terminal = Rubites::Test::Terminal.new(
-        exercises_dir: @exercises, state_dir: @state, args: args
+        levels_dir: @levels, state_dir: @state, args: args
       )
       @terminals << terminal
       terminal
@@ -332,11 +332,17 @@ class TuiTest < Minitest::Test
       lines << "# Hint: #{hint}" if hint
       lines += ['', code, '']
 
-      File.write(File.join(@exercises, "#{basename}.rb"), lines.join("\n"))
+      File.write(exercise_path(basename), lines.join("\n"))
     end
 
     def solve(basename, output)
-      path = File.join(@exercises, "#{basename}.rb")
+      path = exercise_path(basename)
       File.write(path, File.read(path).sub(/^puts .*$/, %(puts "#{output}")))
+    end
+
+    def exercise_path(basename)
+      directory = File.join(@levels, basename[/\A\d+/])
+      FileUtils.mkdir_p(directory)
+      File.join(directory, "#{basename}.rb")
     end
 end

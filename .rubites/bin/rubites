@@ -3,4 +3,4 @@
 
 require_relative '../lib/rubites'
 
-exit Rubites::CLI.new(ARGV, root: File.expand_path('..', __dir__)).run
+exit Rubites::CLI.new(ARGV, root: File.expand_path('../..', __dir__)).run

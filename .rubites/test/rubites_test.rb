@@ -157,7 +157,7 @@ end
 
 # The exercises that ship in this repo, checked against the authoring contract.
 class ExercisesTest < Minitest::Test
-  EXERCISES = Rubites::Exercise.load_all(File.expand_path('../exercises', __dir__))
+  EXERCISES = Rubites::Exercise.load_all(File.expand_path('../../levels', __dir__))
 
   def test_there_are_exercises
     refute_empty EXERCISES
@@ -177,7 +177,17 @@ class ExercisesTest < Minitest::Test
     assert_empty mismatched.map(&:basename)
   end
 
-  # Level 10 has to sort after level 2, which plain filename order gets wrong.
+  # The directory is a third place the level is written down, so it has to
+  # agree with the other two.
+  def test_each_exercise_sits_in_its_level_directory
+    misfiled = EXERCISES.reject do |exercise|
+      File.basename(File.dirname(exercise.path)) == exercise.level.to_s
+    end
+
+    assert_empty misfiled.map(&:path)
+  end
+
+  # Level 10 has to sort after level 2, which plain path order gets wrong.
   def test_they_are_ordered_numerically
     assert_equal EXERCISES.map(&:position).sort, EXERCISES.map(&:position)
   end

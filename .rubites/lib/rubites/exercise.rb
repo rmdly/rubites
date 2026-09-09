@@ -17,10 +17,11 @@ module Rubites
 
     attr_reader :path, :level, :index, :title
 
-    # Sorted numerically rather than by filename, so level 10 lands after level
-    # 2 instead of between 1 and 3.
+    # Searched recursively, since exercises are filed under levels/<level>/,
+    # and sorted numerically rather than by path, so level 10 lands after
+    # level 2 instead of between 1 and 3.
     def self.load_all(directory)
-      Dir.glob(File.join(directory, '*.rb')).map { |path| new(path) }.sort_by(&:position)
+      Dir.glob(File.join(directory, '**', '*.rb')).map { |path| new(path) }.sort_by(&:position)
     end
 
     def initialize(path)

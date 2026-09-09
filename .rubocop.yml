@@ -1,11 +1,15 @@
 AllCops:
   NewCops: disable
   TargetRubyVersion: 3.4
-  # Levels are learner code: deliberately broken, and their leading comment
+  # The engine lives in a dot-directory, which RuboCop skips by default.
+  Include:
+    - .rubites/**/*.rb
+    - .rubites/bin/*
+  # Exercises are learner code: deliberately broken, and their leading comment
   # block is game metadata, so a frozen_string_literal magic comment would
   # be read as prose and shown on screen.
   Exclude:
-    - exercises/**/*.rb
+    - levels/**/*.rb
 
 # DHH indents methods under the visibility modifier.
 Layout/IndentationConsistency:

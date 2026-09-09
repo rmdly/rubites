@@ -28,8 +28,8 @@ module Rubites
 
     def initialize(argv, root:)
       @argv = argv
-      # Overridable so the tests can run the real binary against their own exercises.
-      @exercises_dir = ENV.fetch('RUBITES_EXERCISES') { File.join(root, 'exercises') }
+      # Overridable so the tests can run the real binary against their own levels.
+      @levels_dir = ENV.fetch('RUBITES_LEVELS') { File.join(root, 'levels') }
       @state_dir = ENV.fetch('RUBITES_STATE') { root }
     end
 
@@ -84,7 +84,7 @@ module Rubites
 
       def play(author: false, start_at: nil)
         if exercises.empty?
-          complain("No exercises found in #{@exercises_dir}. Add one and run again.")
+          complain("No exercises found in #{@levels_dir}. Add one and run again.")
         elsif !$stdout.tty?
           complain('rubites needs a terminal. Use --check for plain output.')
         else
@@ -106,7 +106,7 @@ module Rubites
 
       def game(author:, start_at:)
         Game.new(
-          exercises_dir: @exercises_dir,
+          levels_dir: @levels_dir,
           progress: Progress.new(@state_dir),
           screen: Screen.new,
           author: author,
@@ -126,7 +126,7 @@ module Rubites
       end
 
       def exercises
-        @exercises ||= Exercise.load_all(@exercises_dir)
+        @exercises ||= Exercise.load_all(@levels_dir)
       end
   end
 end
