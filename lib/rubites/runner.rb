@@ -3,8 +3,8 @@
 require 'open3'
 
 module Rubites
-  # Runs one level in a child process and compares its output to the expected
-  # output.
+  # Runs one exercise in a child process and compares its output to the
+  # expected output.
   class Runner
     TIMEOUT = 5
 
@@ -33,14 +33,14 @@ module Rubites
       if exercise.expected?
         judge(execute(exercise.path), exercise.expected)
       else
-        # A level with no `# Expected output:` is unfinished, reported as its
-        # own state so it doesn't look like a failed attempt.
+        # An exercise with no `# Expected output:` is unfinished, reported as
+        # its own state so it doesn't look like a failed attempt.
         result(:no_expectation)
       end
     end
 
     # Thread#kill stops the thread that is waiting but leaves the spawned ruby
-    # running, which for a level with an infinite loop means an orphan.
+    # running, which for an exercise with an infinite loop means an orphan.
     def cancel
       @lock.synchronize { kill(@pid) }
     end
@@ -77,8 +77,8 @@ module Rubites
         ['', e.message, false]
       end
 
-      # Drained on threads so a level with a lot of output cannot fill the pipe
-      # and deadlock.
+      # Drained on threads so an exercise with a lot of output cannot fill the
+      # pipe and deadlock.
       def collect(out, err, process)
         output = Thread.new { out.read }
         errors = Thread.new { err.read }

@@ -2,10 +2,10 @@
 
 module Rubites
   module Views
-    # Shows every level and its state. Read-only, so the in-order gating is
-    # unaffected.
+    # Shows every exercise and its state, one row per level. Read-only, so the
+    # in-order gating is unaffected.
     class Map < View
-      CELL = 6
+      GAP = 2
 
       needs :exercises, :progress, :current
 
@@ -13,7 +13,7 @@ module Rubites
         body = ['', indent(rule('LEVEL MAP', "#{progress.count} / #{exercises.size} cleared")), '']
         body.concat(grid)
         body.concat(['', indent(key)])
-        body.concat(this_level)
+        body.concat(this_exercise)
         body.concat(totals)
 
         Text.pad(body, rows - 2) << indent(paint('press any key to go back', Screen::FAINT))
@@ -21,13 +21,23 @@ module Rubites
 
       private
         def grid
-          exercises.each_slice(per_row).map do |row|
-            indent(row.map { |exercise| cell(exercise) }.join(' '))
+          exercises.group_by(&:level).flat_map { |level, group| level_rows(level, group) }
+        end
+
+        # A level wide enough to wrap keeps its label on the first row only, so
+        # the continuation lines sit under its exercises.
+        def level_rows(level, group)
+          group.each_slice(per_row).each_with_index.map do |slice, row|
+            indent(Text.ljust(row.zero? ? label(level) : '', label_width) + cells(slice))
           end
         end
 
-        def per_row
-          [(inner + 1) / CELL, 1].max
+        def label(level)
+          paint("LEVEL #{level}", Screen::GREY)
+        end
+
+        def cells(slice)
+          slice.map { |exercise| Text.ljust(cell(exercise), cell_width) }.join(' ').rstrip
         end
 
         def cell(exercise)
@@ -40,6 +50,18 @@ module Rubites
           end
         end
 
+        def label_width
+          @label_width ||= exercises.map { |exercise| "LEVEL #{exercise.level}".length }.max + GAP
+        end
+
+        def cell_width
+          @cell_width ||= exercises.map { |exercise| exercise.number.length }.max
+        end
+
+        def per_row
+          [(inner - label_width + 1) / (cell_width + 1), 1].max
+        end
+
         def key
           [
             paint('cleared', Screen::GREEN),
@@ -48,11 +70,11 @@ module Rubites
           ].join('   ')
         end
 
-        def this_level
+        def this_exercise
           stat = progress.stat(current) if current
           return [] unless stat && progress.solved?(current)
 
-          ['', indent(paint("this level: #{stat.duration}, #{stat.runs} runs", Screen::GREY))]
+          ['', indent(paint("this exercise: #{stat.duration}, #{stat.runs} runs", Screen::GREY))]
         end
 
         def totals

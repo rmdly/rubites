@@ -1,20 +1,26 @@
 # frozen_string_literal: true
 
 module Rubites
-  # One level, parsed from its own source file. The title, prose, expected
+  # One exercise, parsed from its own source file. The title, prose, expected
   # output, hint and narration all live in the header comments.
+  #
+  # Exercises are numbered `level.index`, so 1.0 is the first exercise of level
+  # 1. The level is the topic; the index is the step within it.
   class Exercise
-    TITLE = /^#\s*(?:Level|Exercise)\s+(\d+)\s*:\s*(.+)$/i
+    TITLE = /^#\s*Exercise\s+(\d+)\.(\d+)\s*:\s*(.+)$/i
     EXPECTED = /^#\s*Expected output:\s*(.*)$/i
     HINT = /^#\s*Hint:\s*(.*)$/i
     NARRATOR = /^#\s*Narrator:\s*(.*)$/i
     TODO = /^#\s*TODO/i
-    UNNUMBERED = '000'
+    NUMBERED = /\A(\d+)\.(\d+)/
+    UNNUMBERED = [0, 0].freeze
 
-    attr_reader :path, :number, :title
+    attr_reader :path, :level, :index, :title
 
+    # Sorted numerically rather than by filename, so level 10 lands after level
+    # 2 instead of between 1 and 3.
     def self.load_all(directory)
-      Dir.glob(File.join(directory, '*.rb')).sort.map { |path| new(path) }
+      Dir.glob(File.join(directory, '*.rb')).map { |path| new(path) }.sort_by(&:position)
     end
 
     def initialize(path)
@@ -24,6 +30,20 @@ module Rubites
 
     def basename
       File.basename(@path, '.rb')
+    end
+
+    def number
+      "#{@level}.#{@index}"
+    end
+
+    def position
+      [@level, @index]
+    end
+
+    # "1.2" picks one exercise. A bare "1" picks the level, which is how
+    # `--author 1` opens at the start of it.
+    def matches?(target)
+      target.to_s.include?('.') ? number == target.to_s : @level == target.to_i
     end
 
     def expected
@@ -56,7 +76,8 @@ module Rubites
       end
 
       def parse
-        @number = nil
+        @level = nil
+        @index = nil
         @title = basename.tr('_', ' ')
         @prose = []
         @expected = []
@@ -64,7 +85,7 @@ module Rubites
         @narrator = []
 
         header.each { |line| absorb(line) }
-        @number = numbered_filename if @number.nil?
+        @level, @index = numbered_filename if @level.nil?
       end
 
       # Only the leading comment block is metadata. Reading stops at the first
@@ -75,7 +96,7 @@ module Rubites
 
       def absorb(line)
         case line
-        when TITLE then absorb_title(Regexp.last_match(1), Regexp.last_match(2))
+        when TITLE then absorb_title(Regexp.last_match(1), Regexp.last_match(2), Regexp.last_match(3))
         when EXPECTED then @expected << Regexp.last_match(1)
         when HINT then @hint << Regexp.last_match(1)
         when NARRATOR then @narrator << Regexp.last_match(1)
@@ -84,13 +105,15 @@ module Rubites
         end
       end
 
-      def absorb_title(number, title)
-        @number = number
+      def absorb_title(level, index, title)
+        @level = level.to_i
+        @index = index.to_i
         @title = title.strip
       end
 
       def numbered_filename
-        basename[/\A\d+/] || UNNUMBERED
+        match = basename.match(NUMBERED)
+        match ? [match[1].to_i, match[2].to_i] : UNNUMBERED
       end
 
       def absorb_prose(line)

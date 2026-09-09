@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 module Rubites
-  # What the level view says about the last run, and in what colour.
+  # What the exercise view says about the last run, and in what colour.
   Status = Data.define(:text, :colour)
 
   class Status
-    UNAUTHORED = 'this level has no "# Expected output:" line yet'
+    UNAUTHORED = 'this exercise has no "# Expected output:" line yet'
     ERROR_ROOM = 58
 
     def self.running

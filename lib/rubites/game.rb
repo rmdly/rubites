@@ -13,7 +13,7 @@ module Rubites
     QUIT_KEYS = ['q', "\C-c"].freeze
 
     def initialize(exercises_dir:, progress:, screen:,
-                   runner: Runner.new, watcher: Watcher.new, author: false, level: nil)
+                   runner: Runner.new, watcher: Watcher.new, author: false, start_at: nil)
       @exercises_dir = exercises_dir
       @exercises = Exercise.load_all(exercises_dir)
       @progress = progress
@@ -21,7 +21,7 @@ module Rubites
       @runner = runner
       @watcher = watcher
       @author = author
-      @index = level ? index_of(level) : 0
+      @index = start_at ? index_of(start_at) : 0
       @tally = Tally.new
       @state = :splash
       @scanned_at = Time.now
@@ -29,8 +29,8 @@ module Rubites
 
     def run
       @screen.open
-      @level = current_level
-      @state = :finished if @level.nil?
+      @exercise = current_exercise
+      @state = :finished if @exercise.nil?
 
       until @state == :quit
         draw
@@ -56,15 +56,15 @@ module Rubites
           @state = :quit
         else
           case @state
-          when :splash, :complete then enter_level
+          when :splash, :complete then enter_exercise
           when :finished then @state = :quit
-          when :map then @state = :level
-          when :level then level_key(key)
+          when :map then @state = :exercise
+          when :exercise then exercise_key(key)
           end
         end
       end
 
-      def level_key(key)
+      def exercise_key(key)
         case key
         when 'h' then @hint = !@hint
         when 'r' then start(:rerun)
@@ -78,22 +78,22 @@ module Rubites
         return unless @author && total.positive?
 
         @index = (@index + delta).clamp(0, total - 1)
-        enter_level
+        enter_exercise
       end
 
       def watch
-        reread if @state == :level && !running? && @watcher.changed?(@level.path)
+        reread if @state == :exercise && !running? && @watcher.changed?(@exercise.path)
       end
 
       # The file can vanish between the mtime check and the read.
       def reread
-        @level = Exercise.new(@level.path)
+        @exercise = Exercise.new(@exercise.path)
         start(:save)
       rescue Errno::ENOENT
         nil
       end
 
-      # Levels are written while the game is running, so the list is re-read
+      # Exercises are written while the game is running, so the list is re-read
       # periodically rather than once at boot.
       def rescan
         return if Time.now - @scanned_at < RESCAN
@@ -107,14 +107,14 @@ module Rubites
         @exercises = found
         return if @state == :splash
 
-        level = current_level
-        enter_level if level && level.path != @level&.path
+        found_current = current_exercise
+        enter_exercise if found_current && found_current.path != @exercise&.path
       end
 
       def start(trigger)
         return if running?
 
-        @attempt = Attempt.new(@runner, @level, trigger: trigger, previous: @result&.state)
+        @attempt = Attempt.new(@runner, @exercise, trigger: trigger, previous: @result&.state)
       end
 
       def running?
@@ -127,11 +127,11 @@ module Rubites
         finished = @attempt
         @attempt = nil
         @result = finished.result
-        @difference = @result.failed? ? Diff.between(@level.expected, @result.output) : nil
+        @difference = @result.failed? ? Diff.between(@exercise.expected, @result.output) : nil
 
         @tally.record(finished.trigger)
         @flash = flash_for(finished)
-        clear_level if @result.passed?
+        clear_exercise if @result.passed?
       end
 
       def flash_for(attempt)
@@ -142,29 +142,29 @@ module Rubites
         Flash.saying("#{verb}, run #{@tally.runs}#{repeat}")
       end
 
-      def clear_level
-        # Author mode does not write progress, so previewing a level does not
-        # mark it cleared.
-        @progress.solve(@level, seconds: @tally.elapsed, runs: @tally.level_runs) unless @author
+      def clear_exercise
+        # Author mode does not write progress, so previewing an exercise does
+        # not mark it cleared.
+        @progress.solve(@exercise, seconds: @tally.elapsed, runs: @tally.exercise_runs) unless @author
         @index += 1 if @author && @index < total - 1
         @state = :complete
       end
 
-      def enter_level
-        @level = current_level
+      def enter_exercise
+        @exercise = current_exercise
 
-        if @level.nil?
+        if @exercise.nil?
           @state = :finished
         else
-          @state = :level
+          @state = :exercise
           @hint = false
-          @tally.start_level
-          @watcher.watch(@level.path)
+          @tally.start_exercise
+          @watcher.watch(@exercise.path)
           start(:enter)
         end
       end
 
-      def current_level
+      def current_exercise
         if @exercises.empty?
           nil
         elsif @author
@@ -174,14 +174,13 @@ module Rubites
         end
       end
 
-      def next_level
-        index = @exercises.index { |exercise| exercise.path == @level.path }
+      def next_exercise
+        index = @exercises.index { |exercise| exercise.path == @exercise.path }
         @exercises[index + 1] if index
       end
 
-      def index_of(number)
-        wanted = format('%03d', number.to_i)
-        @exercises.index { |exercise| exercise.number == wanted } || 0
+      def index_of(target)
+        @exercises.index { |exercise| exercise.matches?(target) } || 0
       end
 
       def draw
@@ -196,7 +195,7 @@ module Rubites
 
       def view(rows, columns)
         case @state
-        when :level then level_view(rows, columns)
+        when :exercise then exercise_view(rows, columns)
         when :map then map_view(rows, columns)
         when :complete then complete_view(rows, columns)
         when :finished then finished_view(rows, columns)
@@ -209,22 +208,22 @@ module Rubites
                           cleared: @progress.count, total: total, author: @author)
       end
 
-      def level_view(rows, columns)
-        Views::Level.new(@screen, rows, columns,
-                         level: @level, cleared: @progress.count, total: total,
-                         status: status, result: @result, difference: @difference,
-                         flash: @flash, hint: @hint, author: @author, tally: @tally)
+      def exercise_view(rows, columns)
+        Views::Exercise.new(@screen, rows, columns,
+                            exercise: @exercise, cleared: @progress.count, total: total,
+                            status: status, result: @result, difference: @difference,
+                            flash: @flash, hint: @hint, author: @author, tally: @tally)
       end
 
       def map_view(rows, columns)
         Views::Map.new(@screen, rows, columns,
-                       exercises: @exercises, progress: @progress, current: @level)
+                       exercises: @exercises, progress: @progress, current: @exercise)
       end
 
       def complete_view(rows, columns)
         Views::Complete.new(@screen, rows, columns,
-                            level: @level, stat: @progress.stat(@level),
-                            cleared: @progress.count, total: total, upcoming: next_level)
+                            exercise: @exercise, stat: @progress.stat(@exercise),
+                            cleared: @progress.count, total: total, upcoming: next_exercise)
       end
 
       def finished_view(rows, columns)

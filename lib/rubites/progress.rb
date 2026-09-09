@@ -3,7 +3,7 @@
 require 'json'
 
 module Rubites
-  # Which levels are cleared, and what each one cost. Levels unlock in order, so
+  # Which exercises are cleared, and what each cost. They unlock in order, so
   # only the cleared set needs recording.
   class Progress
     FILENAME = '.rubites-progress.json'
@@ -21,8 +21,8 @@ module Rubites
       @solved, @stats = load
     end
 
-    # Keyed on the level number rather than the filename, so renaming a slug
-    # (030_blocks to 030_yielding) keeps the cleared state. Renumbering does not.
+    # Keyed on the exercise number rather than the filename, so renaming a slug
+    # (3.0_blocks to 3.0_yielding) keeps the cleared state. Renumbering does not.
     def solved?(exercise)
       @solved.include?(exercise.number)
     end
@@ -49,7 +49,7 @@ module Rubites
       @stats.values.sum(&:runs)
     end
 
-    # The first uncleared level, which is what enforces the in-order
+    # The first uncleared exercise, which is what enforces the in-order
     # progression: there is no code path to a later one while it stands.
     def current(exercises)
       exercises.find { |exercise| !solved?(exercise) }
@@ -73,6 +73,8 @@ module Rubites
       end
 
       # Save files written before this keyed on the basename. Take the number.
+      # Saves from the old flat scheme ("011") no longer match any exercise and
+      # simply read as uncleared.
       def restore(data)
         solved = Array(data['solved']).map { |name| number(name) }
         stats = Hash(data['stats']).filter_map do |name, values|
@@ -83,7 +85,7 @@ module Rubites
       end
 
       def number(name)
-        name.to_s[/\A\d+/] || name.to_s
+        name.to_s[/\A\d+\.\d+/] || name.to_s
       end
 
       def save

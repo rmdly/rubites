@@ -22,7 +22,7 @@ jobs:
       - name: Test the game in a real terminal
         run: ruby test/tui_test.rb
 
-      # The levels ship broken, so this is expected to fail. It runs anyway to
-      # catch a level that crashes for the wrong reason.
-      - name: Smoke-test every level
+      # The exercises ship broken, so this is expected to fail. It runs anyway
+      # to catch an exercise that crashes for the wrong reason.
+      - name: Smoke-test every exercise
         run: bin/rubites --check || true

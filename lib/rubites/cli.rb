@@ -4,19 +4,23 @@ module Rubites
   # The command line: flags, validation, and handing off to the game. Every
   # branch returns the exit status so the binary is one line.
   class CLI
+    TARGET = /\A\d+(?:\.\d+)?\z/
+
     USAGE = <<~TEXT
       rubites: learn to code in Ruby
 
       Usage:
         start                play
-        start --author [N]   unlock every level and start at N, for writing them
-        start --check        run every level once and report (no TUI, for CI)
+        start --author [N]   unlock everything and start at N, for writing
+                             exercises. N is 3.2 for one exercise, or 3 for
+                             the start of level 3.
+        start --check        run every exercise once and report (no TUI, for CI)
         start --reset        forget all progress
         start --help         this
 
       In game:
         h  hint            r  rerun          m  level map       q  quit
-        n  next level      p  previous       (n and p need --author)
+        n  next exercise   p  previous       (n and p need --author)
 
       `start` works inside this directory once direnv has been allowed.
       Without direnv, run bin/rubites instead.
@@ -24,7 +28,7 @@ module Rubites
 
     def initialize(argv, root:)
       @argv = argv
-      # Overridable so the tests can run the real binary against their own levels.
+      # Overridable so the tests can run the real binary against their own exercises.
       @exercises_dir = ENV.fetch('RUBITES_EXERCISES') { File.join(root, 'exercises') }
       @state_dir = ENV.fetch('RUBITES_STATE') { root }
     end
@@ -55,41 +59,41 @@ module Rubites
       # Plain-text mode for CI, which has no TTY for the game to take over.
       def check
         runner = Runner.new
-        passing = levels.count do |level|
-          result = runner.run(level)
-          puts format('%-40s %s', level.basename, result.passed? ? 'pass' : result.state)
+        passing = exercises.count do |exercise|
+          result = runner.run(exercise)
+          puts format('%-40s %s', exercise.basename, result.passed? ? 'pass' : result.state)
           result.passed?
         end
 
         puts
-        puts "#{passing}/#{levels.size} levels passing"
-        passing == levels.size ? 0 : 1
+        puts "#{passing}/#{exercises.size} exercises passing"
+        passing == exercises.size ? 0 : 1
       end
 
       def author
-        number = @argv[1] ? Integer(@argv[1], exception: false) : 1
+        target = @argv[1]
 
-        if number.nil? || number < 1
-          complain("--author takes a level number, e.g. --author 12 (got #{@argv[1].inspect})")
-        elsif levels.any? && levels.none? { |level| level.number == numbered(number) }
-          complain("There's no level #{numbered(number)}. Levels run #{levels.first.number} to #{levels.last.number}.")
+        if target && !TARGET.match?(target)
+          complain("--author takes an exercise or a level, e.g. --author 3.2 or --author 3 (got #{target.inspect})")
+        elsif target && exercises.any? && exercises.none? { |exercise| exercise.matches?(target) }
+          complain("There's no #{target}. Exercises run #{exercises.first.number} to #{exercises.last.number}.")
         else
-          play(author: true, level: number)
+          play(author: true, start_at: target)
         end
       end
 
-      def play(author: false, level: nil)
-        if levels.empty?
-          complain("No levels found in #{@exercises_dir}. Add one and run again.")
+      def play(author: false, start_at: nil)
+        if exercises.empty?
+          complain("No exercises found in #{@exercises_dir}. Add one and run again.")
         elsif !$stdout.tty?
           complain('rubites needs a terminal. Use --check for plain output.')
         else
-          start(author: author, level: level)
+          start(author: author, start_at: start_at)
         end
       end
 
-      def start(author:, level:)
-        game(author: author, level: level).run
+      def start(author:, start_at:)
+        game(author: author, start_at: start_at).run
         0
       rescue Interrupt
         0
@@ -100,13 +104,13 @@ module Rubites
         1
       end
 
-      def game(author:, level:)
+      def game(author:, start_at:)
         Game.new(
           exercises_dir: @exercises_dir,
           progress: Progress.new(@state_dir),
           screen: Screen.new,
           author: author,
-          level: level
+          start_at: start_at
         )
       end
 
@@ -121,12 +125,8 @@ module Rubites
         1
       end
 
-      def numbered(number)
-        format('%03d', number)
-      end
-
-      def levels
-        @levels ||= Exercise.load_all(@exercises_dir)
+      def exercises
+        @exercises ||= Exercise.load_all(@exercises_dir)
       end
   end
 end

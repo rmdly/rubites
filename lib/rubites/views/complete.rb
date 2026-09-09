@@ -3,7 +3,7 @@
 module Rubites
   module Views
     class Complete < View
-      needs :level, :stat, :cleared, :total, :upcoming
+      needs :exercise, :stat, :cleared, :total, :upcoming
 
       def lines
         middle(body)
@@ -12,9 +12,9 @@ module Rubites
       private
         def body
           [
-            paint('LEVEL COMPLETE', Screen::GREEN, bold: true),
+            paint('EXERCISE COMPLETE', Screen::GREEN, bold: true),
             '',
-            paint("#{level.number} · #{level.title}", Screen::WHITE),
+            paint("#{exercise.number} · #{exercise.title}", Screen::WHITE),
             *cost,
             '',
             paint("#{cleared} of #{total} cleared", Screen::GREY),
@@ -30,7 +30,7 @@ module Rubites
         end
 
         def next_up
-          ['', paint("next up: level #{upcoming.number} #{upcoming.title}", Screen::RUBY)] if upcoming
+          ['', paint("next up: #{upcoming.number} #{upcoming.title}", Screen::RUBY)] if upcoming
         end
     end
   end

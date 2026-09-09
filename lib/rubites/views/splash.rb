@@ -18,7 +18,7 @@ module Rubites
             '',
             paint("#{username} · #{Time.now.strftime('%A %-d %B, %H:%M')}", Screen::WHITE),
             '',
-            paint("#{cleared} of #{total} levels cleared", Screen::GREY),
+            paint("#{cleared} of #{total} exercises cleared", Screen::GREY),
             *author_note,
             '',
             '',
@@ -27,7 +27,7 @@ module Rubites
         end
 
         def author_note
-          ['', paint('author mode: every level unlocked', Screen::YELLOW)] if author
+          ['', paint('author mode: every exercise unlocked', Screen::YELLOW)] if author
         end
     end
   end

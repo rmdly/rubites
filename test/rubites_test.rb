@@ -6,8 +6,8 @@ require_relative '../lib/rubites'
 
 class ExerciseTest < Minitest::Test
   def test_it_reads_the_header
-    exercise = build(<<~LEVEL)
-      # Level 007: Quotes
+    exercise = build(<<~EXERCISE)
+      # Exercise 7.2: Quotes
       #
       # Double quotes interpolate. Single quotes do not.
       #
@@ -17,9 +17,11 @@ class ExerciseTest < Minitest::Test
 
       # TODO: fix this
       puts 'one'
-    LEVEL
+    EXERCISE
 
-    assert_equal '007', exercise.number
+    assert_equal '7.2', exercise.number
+    assert_equal 7, exercise.level
+    assert_equal 2, exercise.index
     assert_equal 'Quotes', exercise.title
     assert_equal "one\ntwo", exercise.expected
     assert_equal 'try double quotes', exercise.hint
@@ -28,26 +30,39 @@ class ExerciseTest < Minitest::Test
     refute_includes exercise.prose, 'Expected output'
   end
 
-  def test_it_accepts_the_older_exercise_header
-    assert_equal 'Variables', build("# Exercise 001: Variables\n#\n# Expected output: hi\n\nputs 'hi'\n").title
+  # The header wins, but a file without one still gets its number from the name.
+  def test_an_unheaded_exercise_is_numbered_from_its_filename
+    exercise = build("# Expected output: hi\n\nputs 'hi'\n", name: '4.3_unheaded')
+
+    assert_equal '4.3', exercise.number
   end
 
   # Parsing stops at the first line of code, so later comments are ignored.
   def test_it_stops_reading_at_the_first_line_of_code
-    exercise = build("# Level 001: One\n#\n# Expected output: hi\n\nputs 'hi'\n# Hint: sneaky\n")
+    exercise = build("# Exercise 1.0: One\n#\n# Expected output: hi\n\nputs 'hi'\n# Hint: sneaky\n")
 
     assert_nil exercise.hint
   end
 
-  def test_a_level_with_no_expected_output_is_not_runnable
-    refute_predicate build("# Level 001: One\n\nputs 'hi'\n"), :expected?
+  def test_an_exercise_with_no_expected_output_is_not_runnable
+    refute_predicate build("# Exercise 1.0: One\n\nputs 'hi'\n"), :expected?
+  end
+
+  # "1.2" is one exercise; a bare "1" is the whole level, for --author.
+  def test_it_matches_an_exercise_or_its_level
+    exercise = build("# Exercise 1.2: One\n#\n# Expected output: hi\n\nputs 'hi'\n")
+
+    assert exercise.matches?('1.2')
+    assert exercise.matches?('1')
+    refute exercise.matches?('1.3')
+    refute exercise.matches?('2')
   end
 
   private
 
-    def build(source)
+    def build(source, name: '1.0_exercise')
       @dir ||= Dir.mktmpdir
-      path = File.join(@dir, '001_level.rb')
+      path = File.join(@dir, "#{name}.rb")
       File.write(path, source)
       Rubites::Exercise.new(path)
     end
@@ -60,22 +75,22 @@ class RunnerTest < Minitest::Test
   end
 
   def test_matching_output_passes
-    assert_predicate run_level("# Level 1: x\n# Expected output: hi\nputs 'hi'\n"), :passed?
+    assert_predicate run_level("# Exercise 1.0: x\n# Expected output: hi\nputs 'hi'\n"), :passed?
   end
 
   def test_trailing_whitespace_is_forgiven
-    assert_predicate run_level("# Level 1: x\n# Expected output: hi\nputs 'hi   '\n"), :passed?
+    assert_predicate run_level("# Exercise 1.0: x\n# Expected output: hi\nputs 'hi   '\n"), :passed?
   end
 
   def test_wrong_output_fails
-    result = run_level("# Level 1: x\n# Expected output: hi\nputs 'bye'\n")
+    result = run_level("# Exercise 1.0: x\n# Expected output: hi\nputs 'bye'\n")
 
     assert_predicate result, :failed?
     assert_equal "bye\n", result.output
   end
 
   def test_a_raising_level_reports_the_error
-    result = run_level("# Level 1: x\n# Expected output: hi\nnope\n")
+    result = run_level("# Exercise 1.0: x\n# Expected output: hi\nnope\n")
 
     assert_predicate result, :errored?
     assert_match(/nope/, result.error)
@@ -84,7 +99,7 @@ class RunnerTest < Minitest::Test
   private
 
     def run_level(source)
-      path = File.join(@dir, '001_level.rb')
+      path = File.join(@dir, '1.0_exercise.rb')
       File.write(path, source)
       @runner.run(Rubites::Exercise.new(path))
     end
@@ -93,9 +108,9 @@ end
 class ProgressTest < Minitest::Test
   def setup
     @dir = Dir.mktmpdir
-    @levels = %w[001 002 003].map do |number|
-      path = File.join(@dir, "#{number}_level.rb")
-      File.write(path, "# Level #{number}: L#{number}\n# Expected output: x\nputs 'x'\n")
+    @exercises = %w[1.0 1.1 1.2].map do |number|
+      path = File.join(@dir, "#{number}_exercise.rb")
+      File.write(path, "# Exercise #{number}: E#{number}\n# Expected output: x\nputs 'x'\n")
       Rubites::Exercise.new(path)
     end
   end
@@ -104,29 +119,29 @@ class ProgressTest < Minitest::Test
   def test_the_current_level_is_always_the_first_unsolved_one
     progress = Rubites::Progress.new(@dir)
 
-    assert_equal @levels[0].basename, progress.current(@levels).basename
+    assert_equal @exercises[0].basename, progress.current(@exercises).basename
 
-    progress.solve(@levels[0])
+    progress.solve(@exercises[0])
 
-    assert_equal @levels[1].basename, progress.current(@levels).basename
+    assert_equal @exercises[1].basename, progress.current(@exercises).basename
   end
 
   def test_solving_out_of_order_does_not_skip_the_gap
     progress = Rubites::Progress.new(@dir)
-    progress.solve(@levels[2])
+    progress.solve(@exercises[2])
 
-    assert_equal @levels[0].basename, progress.current(@levels).basename
+    assert_equal @exercises[0].basename, progress.current(@exercises).basename
   end
 
   def test_progress_survives_a_restart
-    Rubites::Progress.new(@dir).solve(@levels[0])
+    Rubites::Progress.new(@dir).solve(@exercises[0])
 
     assert_equal 1, Rubites::Progress.new(@dir).count
   end
 
   def test_reset_forgets_everything
     progress = Rubites::Progress.new(@dir)
-    progress.solve(@levels[0])
+    progress.solve(@exercises[0])
     progress.reset
 
     assert_equal 0, progress.count
@@ -134,36 +149,49 @@ class ProgressTest < Minitest::Test
 
   def test_all_levels_solved_means_there_is_no_current_level
     progress = Rubites::Progress.new(@dir)
-    @levels.each { |level| progress.solve(level) }
+    @exercises.each { |exercise| progress.solve(exercise) }
 
-    assert_nil progress.current(@levels)
+    assert_nil progress.current(@exercises)
   end
 end
 
-# The levels that ship in this repo, checked against the authoring contract.
-class LevelsTest < Minitest::Test
-  LEVELS = Rubites::Exercise.load_all(File.expand_path('../exercises', __dir__))
+# The exercises that ship in this repo, checked against the authoring contract.
+class ExercisesTest < Minitest::Test
+  EXERCISES = Rubites::Exercise.load_all(File.expand_path('../exercises', __dir__))
 
-  def test_there_are_levels
-    refute_empty LEVELS
+  def test_there_are_exercises
+    refute_empty EXERCISES
   end
 
-  def test_level_numbers_are_unique
-    duplicates = LEVELS.map(&:number).tally.select { |_, count| count > 1 }.keys
+  def test_exercise_numbers_are_unique
+    duplicates = EXERCISES.map(&:number).tally.select { |_, count| count > 1 }.keys
 
-    assert_empty duplicates, "more than one level numbered: #{duplicates.join(', ')}"
+    assert_empty duplicates, "more than one exercise numbered: #{duplicates.join(', ')}"
   end
 
-  LEVELS.each do |level|
-    define_method(:"test_#{level.basename}_is_introduced_properly") do
-      refute_empty level.title
-      assert_predicate level, :expected?
-      refute_empty level.prose
+  # The number in the header and the number on the file have to agree, or the
+  # progress key and the play order come apart.
+  def test_each_header_matches_its_filename
+    mismatched = EXERCISES.reject { |exercise| exercise.basename.start_with?("#{exercise.number}_") }
+
+    assert_empty mismatched.map(&:basename)
+  end
+
+  # Level 10 has to sort after level 2, which plain filename order gets wrong.
+  def test_they_are_ordered_numerically
+    assert_equal EXERCISES.map(&:position).sort, EXERCISES.map(&:position)
+  end
+
+  EXERCISES.each do |exercise|
+    define_method(:"test_#{exercise.basename}_is_introduced_properly") do
+      refute_empty exercise.title
+      assert_predicate exercise, :expected?
+      refute_empty exercise.prose
     end
 
-    # A level that already prints its expected output has nothing left to fix.
-    define_method(:"test_#{level.basename}_ships_unsolved") do
-      refute_predicate Rubites::Runner.new.run(level), :passed?
+    # An exercise that already prints its expected output has nothing to fix.
+    define_method(:"test_#{exercise.basename}_ships_unsolved") do
+      refute_predicate Rubites::Runner.new.run(exercise), :passed?
     end
   end
 end
@@ -220,12 +248,12 @@ class DiffTest < Minitest::Test
     end
 end
 
-class UnauthoredLevelTest < Minitest::Test
-  # An unfinished level reports its own state rather than a failure.
-  def test_a_level_with_no_expected_output_reports_itself
+class UnauthoredExerciseTest < Minitest::Test
+  # An unfinished exercise reports its own state rather than a failure.
+  def test_an_exercise_with_no_expected_output_reports_itself
     dir = Dir.mktmpdir
-    path = File.join(dir, '001_level.rb')
-    File.write(path, "# Level 001: Unfinished\n#\n# Prose.\n\nputs 'hi'\n")
+    path = File.join(dir, '1.0_exercise.rb')
+    File.write(path, "# Exercise 1.0: Unfinished\n#\n# Prose.\n\nputs 'hi'\n")
 
     result = Rubites::Runner.new.run(Rubites::Exercise.new(path))
 
@@ -237,28 +265,28 @@ end
 class NarratorTest < Minitest::Test
   def test_the_narrator_is_read_and_kept_out_of_the_prose
     dir = Dir.mktmpdir
-    path = File.join(dir, '001_level.rb')
-    File.write(path, <<~LEVEL)
-      # Level 001: Voice
+    path = File.join(dir, '1.0_exercise.rb')
+    File.write(path, <<~EXERCISE)
+      # Exercise 1.0: Voice
       #
       # Teaching prose.
       #
-      # Narrator: Some narration for this level.
+      # Narrator: Some narration for this exercise.
       # Expected output: hi
 
       puts 'hi'
-    LEVEL
+    EXERCISE
 
     exercise = Rubites::Exercise.new(path)
 
-    assert_equal 'Some narration for this level.', exercise.narrator
+    assert_equal 'Some narration for this exercise.', exercise.narrator
     assert_equal 'Teaching prose.', exercise.prose
   end
 
-  def test_a_level_without_a_narrator_has_none
+  def test_an_exercise_without_a_narrator_has_none
     dir = Dir.mktmpdir
-    path = File.join(dir, '001_level.rb')
-    File.write(path, "# Level 001: Quiet\n#\n# Prose.\n#\n# Expected output: hi\n\nputs 'hi'\n")
+    path = File.join(dir, '1.0_exercise.rb')
+    File.write(path, "# Exercise 1.0: Quiet\n#\n# Prose.\n#\n# Expected output: hi\n\nputs 'hi'\n")
 
     assert_nil Rubites::Exercise.new(path).narrator
   end
@@ -267,16 +295,16 @@ end
 class ProgressStatsTest < Minitest::Test
   def setup
     @dir = Dir.mktmpdir
-    path = File.join(@dir, '001_level.rb')
-    File.write(path, "# Level 001: One\n# Expected output: x\nputs 'x'\n")
-    @level = Rubites::Exercise.new(path)
+    path = File.join(@dir, '1.0_exercise.rb')
+    File.write(path, "# Exercise 1.0: One\n# Expected output: x\nputs 'x'\n")
+    @exercise = Rubites::Exercise.new(path)
   end
 
-  def test_it_records_time_and_runs_for_a_cleared_level
+  def test_it_records_time_and_runs_for_a_cleared_exercise
     progress = Rubites::Progress.new(@dir)
-    progress.solve(@level, seconds: 222, runs: 7)
+    progress.solve(@exercise, seconds: 222, runs: 7)
 
-    stat = progress.stat(@level)
+    stat = progress.stat(@exercise)
 
     assert_equal 222, stat.seconds
     assert_equal 7, stat.runs
@@ -285,13 +313,13 @@ class ProgressStatsTest < Minitest::Test
 
   def test_a_sub_minute_clear_reads_in_seconds
     progress = Rubites::Progress.new(@dir)
-    progress.solve(@level, seconds: 41, runs: 2)
+    progress.solve(@exercise, seconds: 41, runs: 2)
 
-    assert_equal '41s', progress.stat(@level).duration.to_s
+    assert_equal '41s', progress.stat(@exercise).duration.to_s
   end
 
   def test_stats_survive_a_restart_and_feed_the_totals
-    Rubites::Progress.new(@dir).solve(@level, seconds: 100, runs: 3)
+    Rubites::Progress.new(@dir).solve(@exercise, seconds: 100, runs: 3)
     reloaded = Rubites::Progress.new(@dir)
 
     assert_equal 100, reloaded.total_duration.seconds
@@ -300,21 +328,21 @@ class ProgressStatsTest < Minitest::Test
 
   # Save files written before stats existed must still load.
   def test_it_reads_a_save_file_with_no_stats
-    File.write(File.join(@dir, Rubites::Progress::FILENAME), '{"solved":["001_level"]}')
+    File.write(File.join(@dir, Rubites::Progress::FILENAME), '{"solved":["1.0_exercise"]}')
     progress = Rubites::Progress.new(@dir)
 
     assert_equal 1, progress.count
-    assert_nil progress.stat(@level)
+    assert_nil progress.stat(@exercise)
     assert_equal 0, progress.total_duration.seconds
   end
 
   def test_reset_clears_stats_too
     progress = Rubites::Progress.new(@dir)
-    progress.solve(@level, seconds: 100, runs: 3)
+    progress.solve(@exercise, seconds: 100, runs: 3)
     progress.reset
 
     assert_equal 0, progress.total_duration.seconds
-    assert_nil progress.stat(@level)
+    assert_nil progress.stat(@exercise)
   end
 end
 
@@ -416,29 +444,29 @@ class TallyTest < Minitest::Test
     assert_equal 0, @tally.runs
   end
 
-  def test_recording_counts_the_session_and_the_level
+  def test_recording_counts_the_session_and_the_exercise
     2.times { @tally.record(:rerun) }
 
     assert_equal 2, @tally.runs
-    assert_equal 2, @tally.level_runs
+    assert_equal 2, @tally.exercise_runs
     assert_equal :rerun, @tally.trigger
     assert_predicate @tally, :ran?
   end
 
   # The session count carries across levels; the level count does not.
-  def test_starting_a_level_resets_only_the_level_count
+  def test_starting_an_exercise_resets_only_the_exercise_count
     @tally.record(:save)
-    @tally.start_level
+    @tally.start_exercise
     @tally.record(:save)
 
     assert_equal 2, @tally.runs
-    assert_equal 1, @tally.level_runs
+    assert_equal 1, @tally.exercise_runs
   end
 
-  def test_elapsed_is_nil_until_a_level_starts
+  def test_elapsed_is_nil_until_an_exercise_starts
     assert_nil @tally.elapsed
 
-    @tally.start_level
+    @tally.start_exercise
 
     assert_operator @tally.elapsed, :>=, 0
   end

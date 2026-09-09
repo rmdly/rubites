@@ -1,17 +1,17 @@
 # frozen_string_literal: true
 
 module Rubites
-  # One execution of one level, run on a thread so the game loop keeps
-  # rendering and reading keys while it happens. Run inline, a level that hangs
-  # would freeze the game until it timed out.
+  # One execution of one exercise, run on a thread so the game loop keeps
+  # rendering and reading keys while it happens. Run inline, an exercise that
+  # hangs would freeze the game until it timed out.
   class Attempt
     attr_reader :trigger, :previous
 
-    def initialize(runner, level, trigger:, previous: nil)
+    def initialize(runner, exercise, trigger:, previous: nil)
       @runner = runner
       @trigger = trigger
       @previous = previous
-      @thread = Thread.new { runner.run(level) }
+      @thread = Thread.new { runner.run(exercise) }
     end
 
     def running?

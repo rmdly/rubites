@@ -12,7 +12,7 @@ module Rubites
       private
         def body
           [
-            paint('ALL LEVELS CLEARED', Screen::YELLOW, bold: true),
+            paint('ALL EXERCISES CLEARED', Screen::YELLOW, bold: true),
             '',
             paint("#{total} of #{total}", Screen::WHITE),
             '',

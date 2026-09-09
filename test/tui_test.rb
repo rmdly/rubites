@@ -6,17 +6,17 @@ require 'fileutils'
 require_relative '../lib/rubites'
 require_relative 'support/terminal'
 
-# Drives the real binary in a pty against its own levels, so the game itself is
-# covered rather than only the classes underneath it.
+# Drives the real binary in a pty against its own exercises, so the game itself
+# is covered rather than only the classes underneath it.
 class TuiTest < Minitest::Test
   def setup
-    @exercises = Dir.mktmpdir('rubites-levels')
+    @exercises = Dir.mktmpdir('rubites-exercises')
     @state = Dir.mktmpdir('rubites-state')
     @terminals = []
 
-    write_level('001_first', 'First', expected: 'one', code: 'puts "wrong"', hint: 'print one')
-    write_level('002_second', 'Second', expected: 'two', code: 'puts "wrong"')
-    write_level('003_third', 'Third', expected: 'three', code: 'puts "wrong"')
+    write_exercise('1.0_first', 'First', expected: 'one', code: 'puts "wrong"', hint: 'print one')
+    write_exercise('1.1_second', 'Second', expected: 'two', code: 'puts "wrong"')
+    write_exercise('2.0_third', 'Third', expected: 'three', code: 'puts "wrong"')
   end
 
   def teardown
@@ -34,15 +34,15 @@ class TuiTest < Minitest::Test
 
     assert_match(/Learn to code in Ruby\./, screen)
     assert_match(/tester/, screen)
-    assert_match(/0 of 3 levels cleared/, screen)
+    assert_match(/0 of 3 exercises cleared/, screen)
   end
 
-  def test_any_key_starts_the_first_level
+  def test_any_key_starts_the_first_exercise
     game = play
     game.wait_for(/press any key to begin/)
     game.press(' ')
 
-    assert_match(/LEVEL 001 · First/, game.wait_for(/LEVEL 001/))
+    assert_match(/EXERCISE 1\.0 · First/, game.wait_for(/EXERCISE 1\.0/))
   end
 
   def test_q_quits_from_the_splash
@@ -53,10 +53,10 @@ class TuiTest < Minitest::Test
     assert game.wait_for_exit, 'q on the splash should quit, not start a level'
   end
 
-  # ---- the level view ------------------------------------------------------
+  # ---- the exercise view ------------------------------------------------------
 
   def test_it_shows_expected_and_actual_side_by_side
-    game = at_level_one
+    game = at_first_exercise
     screen = game.wait_for(/not yet/)
 
     assert_match(/expected/, screen)
@@ -66,7 +66,7 @@ class TuiTest < Minitest::Test
   end
 
   def test_h_toggles_the_hint
-    game = at_level_one
+    game = at_first_exercise
     game.wait_for(/not yet/)
 
     refute_match(/hint: print one/, game.text)
@@ -79,8 +79,8 @@ class TuiTest < Minitest::Test
   # ---- the thing the panels can't show -------------------------------------
 
   def test_it_points_at_the_column_where_the_output_diverges
-    write_level('001_first', 'First', expected: 'Hello, Rubites!', code: 'puts "Hello, World!"')
-    game = at_level_one
+    write_exercise('1.0_first', 'First', expected: 'Hello, Rubites!', code: 'puts "Hello, World!"')
+    game = at_first_exercise
 
     screen = game.wait_for(/differs at column/)
 
@@ -96,8 +96,8 @@ class TuiTest < Minitest::Test
   end
 
   def test_it_names_a_spacing_difference_rather_than_leaving_it_invisible
-    write_level('001_first', 'First', expected: 'a  b', code: 'puts "a b"')
-    game = at_level_one
+    write_exercise('1.0_first', 'First', expected: 'a  b', code: 'puts "a b"')
+    game = at_first_exercise
 
     assert_match(/spacing/, game.wait_for(/spacing/))
   end
@@ -105,7 +105,7 @@ class TuiTest < Minitest::Test
   # ---- rerun feedback ------------------------------------------------------
 
   def test_rerunning_says_so_even_when_nothing_changes
-    game = at_level_one
+    game = at_first_exercise
     game.wait_for(/not yet/)
     game.press('r')
 
@@ -115,7 +115,7 @@ class TuiTest < Minitest::Test
   end
 
   def test_the_run_counter_climbs
-    game = at_level_one
+    game = at_first_exercise
     game.wait_for(/not yet/)
     game.press('r')
     game.wait_for(/run 2/)
@@ -126,83 +126,93 @@ class TuiTest < Minitest::Test
 
   # ---- progression ---------------------------------------------------------
 
-  def test_saving_a_correct_answer_clears_the_level_and_offers_the_next
-    game = at_level_one
+  def test_saving_a_correct_answer_clears_the_exercise_and_offers_the_next
+    game = at_first_exercise
     game.wait_for(/not yet/)
 
-    solve('001_first', 'one')
+    solve('1.0_first', 'one')
 
-    screen = game.wait_for(/LEVEL COMPLETE/)
+    screen = game.wait_for(/EXERCISE COMPLETE/)
 
-    assert_match(/001 · First/, screen)
+    assert_match(/1\.0 · First/, screen)
     assert_match(/1 of 3 cleared/, screen)
-    assert_match(/next up: level 002 Second/, screen)
+    assert_match(/next up: 1\.1 Second/, screen)
   end
 
-  def test_clearing_a_level_records_its_time_and_runs
-    game = at_level_one
+  def test_clearing_an_exercise_records_its_time_and_runs
+    game = at_first_exercise
     game.wait_for(/not yet/)
-    solve('001_first', 'one')
+    solve('1.0_first', 'one')
     # "run" also appears in the footer, so wait for the screen, not the word.
-    screen = game.wait_for(/LEVEL COMPLETE/)
+    screen = game.wait_for(/EXERCISE COMPLETE/)
 
     assert_match(/\d+s · \d+ runs?/, screen)
   end
 
   def test_progress_survives_quitting_and_reopening
-    game = at_level_one
+    game = at_first_exercise
     game.wait_for(/not yet/)
-    solve('001_first', 'one')
-    game.wait_for(/LEVEL COMPLETE/)
+    solve('1.0_first', 'one')
+    game.wait_for(/EXERCISE COMPLETE/)
     game.close
 
     reopened = play
-    reopened.wait_for(/1 of 3 levels cleared/)
+    reopened.wait_for(/1 of 3 exercises cleared/)
     reopened.press(' ')
 
-    assert_match(/LEVEL 002/, reopened.wait_for(/LEVEL 002/))
+    assert_match(/EXERCISE 1\.1/, reopened.wait_for(/EXERCISE 1\.1/))
   end
 
   # ---- the level map -------------------------------------------------------
 
   def test_m_opens_the_map_and_any_key_closes_it
-    game = at_level_one
+    game = at_first_exercise
     game.wait_for(/not yet/)
     game.press('m')
 
     screen = game.wait_for(/LEVEL MAP/)
 
-    assert_match(/001 002 003/, screen)
+    assert_match(/LEVEL 1\s+1\.0 1\.1/, screen)
+    assert_match(/LEVEL 2\s+2\.0/, screen)
     assert_match(/cleared\s+current\s+locked/, screen)
 
     game.press(' ')
 
-    assert_match(/LEVEL 001/, game.wait_for(/LEVEL 001/))
+    assert_match(/EXERCISE 1\.0/, game.wait_for(/EXERCISE 1\.0/))
   end
 
   # ---- authoring -----------------------------------------------------------
 
+  # A bare level number opens the start of that level.
   def test_author_mode_opens_a_locked_level_directly
-    game = play(args: ['--author', '3'])
+    game = play(args: ['--author', '2'])
     game.wait_for(/author mode/)
     game.press(' ')
 
-    screen = game.wait_for(/LEVEL 003/)
+    screen = game.wait_for(/EXERCISE 2\.0/)
 
-    assert_match(/LEVEL 003 · Third/, screen)
+    assert_match(/EXERCISE 2\.0 · Third/, screen)
     assert_match(/\[n\] next/, screen)
   end
 
-  def test_author_mode_steps_between_levels_without_solving_them
+  def test_author_mode_opens_one_exercise_by_its_dotted_number
+    game = play(args: ['--author', '1.1'])
+    game.wait_for(/author mode/)
+    game.press(' ')
+
+    assert_match(/EXERCISE 1\.1 · Second/, game.wait_for(/EXERCISE 1\.1/))
+  end
+
+  def test_author_mode_steps_between_exercises_without_solving_them
     game = play(args: ['--author', '1'])
     game.wait_for(/author mode/)
     game.press(' ')
-    game.wait_for(/LEVEL 001/)
+    game.wait_for(/EXERCISE 1\.0/)
     game.press('n')
-    game.wait_for(/LEVEL 002/)
+    game.wait_for(/EXERCISE 1\.1/)
     game.press('p')
 
-    assert_match(/LEVEL 001/, game.wait_for(/LEVEL 001/))
+    assert_match(/EXERCISE 1\.0/, game.wait_for(/EXERCISE 1\.0/))
   end
 
   # Author mode must not write to the save file.
@@ -211,8 +221,8 @@ class TuiTest < Minitest::Test
     game.wait_for(/author mode/)
     game.press(' ')
     game.wait_for(/not yet/)
-    solve('001_first', 'one')
-    game.wait_for(/LEVEL COMPLETE/)
+    solve('1.0_first', 'one')
+    game.wait_for(/EXERCISE COMPLETE/)
     game.close
 
     save = File.join(@state, Rubites::Progress::FILENAME)
@@ -221,42 +231,42 @@ class TuiTest < Minitest::Test
     assert_empty recorded, "author mode recorded progress in #{save}"
   end
 
-  def test_a_level_added_while_playing_appears_without_a_restart
-    game = at_level_one
+  def test_an_exercise_added_while_playing_appears_without_a_restart
+    game = at_first_exercise
     game.wait_for(%r{0 / 3})
 
-    write_level('004_fourth', 'Fourth', expected: 'four', code: 'puts "wrong"')
+    write_exercise('2.1_fourth', 'Fourth', expected: 'four', code: 'puts "wrong"')
 
     assert_match(%r{0 / 4}, game.wait_for(%r{0 / 4}))
   end
 
-  def test_a_level_with_no_expected_output_says_so_instead_of_failing
-    write_level('001_first', 'First', expected: nil, code: 'puts "anything"')
-    game = at_level_one
+  def test_an_exercise_with_no_expected_output_says_so_instead_of_failing
+    write_exercise('1.0_first', 'First', expected: nil, code: 'puts "anything"')
+    game = at_first_exercise
 
     assert_match(/no "# Expected output:" line/, game.wait_for(/Expected output/))
   end
 
   # ---- housekeeping --------------------------------------------------------
 
-  def test_it_survives_a_level_file_being_deleted_underneath_it
-    game = at_level_one
+  def test_it_survives_an_exercise_file_being_deleted_underneath_it
+    game = at_first_exercise
     game.wait_for(/not yet/)
 
-    File.delete(File.join(@exercises, '001_first.rb'))
-    # The next scan re-resolves the current level.
-    game.wait_for(/LEVEL 00[12]/)
+    File.delete(File.join(@exercises, '1.0_first.rb'))
+    # The next scan re-resolves the current exercise.
+    game.wait_for(/EXERCISE 1\.[01]/)
 
-    assert game.alive?, 'deleting the current level crashed the game'
+    assert game.alive?, 'deleting the current exercise crashed the game'
   end
 
   # Needs more than one output row for a misaligned border to show up.
   def test_wide_characters_do_not_bend_the_panels
     # A CJK character is double-width, which covers the same case as a
     # pictograph without putting one in the repository.
-    write_level('001_first', 'First', expected: 'gem',
-                                      code: %(puts "ruby 日本語 rocks"\nputs "plain ascii"))
-    game = at_level_one
+    write_exercise('1.0_first', 'First', expected: 'gem',
+                                         code: %(puts "ruby 日本語 rocks"\nputs "plain ascii"))
+    game = at_first_exercise
     game.wait_for(/plain ascii/)
 
     # Measured in terminal cells rather than string indices.
@@ -268,12 +278,12 @@ class TuiTest < Minitest::Test
   end
 
   def test_it_reflows_when_the_terminal_is_resized
-    game = at_level_one
-    game.wait_for(/LEVEL 001/)
+    game = at_first_exercise
+    game.wait_for(/EXERCISE 1\.0/)
     wide = game.columns_of_last('│').first
 
     game.resize(30, 70)
-    game.wait_for(/LEVEL 001/)
+    game.wait_for(/EXERCISE 1\.0/)
     narrow = game.columns_of_last('│').first
 
     refute_nil narrow, "nothing rendered after resizing:\n#{game.text}"
@@ -281,21 +291,21 @@ class TuiTest < Minitest::Test
   end
 
   def test_it_says_so_rather_than_scribbling_when_the_terminal_is_tiny
-    game = at_level_one
-    game.wait_for(/LEVEL 001/)
+    game = at_first_exercise
+    game.wait_for(/EXERCISE 1\.0/)
     game.resize(10, 40)
 
     assert_match(/terminal too small/, game.wait_for(/too small/))
   end
 
   def test_it_recovers_when_the_terminal_grows_back
-    game = at_level_one
-    game.wait_for(/LEVEL 001/)
+    game = at_first_exercise
+    game.wait_for(/EXERCISE 1\.0/)
     game.resize(10, 40)
     game.wait_for(/too small/)
     game.resize(34, 92)
 
-    assert_match(/LEVEL 001/, game.wait_for(/LEVEL 001/))
+    assert_match(/EXERCISE 1\.0/, game.wait_for(/EXERCISE 1\.0/))
   end
 
   private
@@ -308,16 +318,16 @@ class TuiTest < Minitest::Test
       terminal
     end
 
-    def at_level_one
+    def at_first_exercise
       game = play
       game.wait_for(/press any key to begin/)
       game.press(' ')
       game
     end
 
-    def write_level(basename, title, expected:, code:, hint: nil)
-      number = basename[/\A\d+/]
-      lines = ["# Level #{number}: #{title}", '#', '# Some teaching prose.', '#']
+    def write_exercise(basename, title, expected:, code:, hint: nil)
+      number = basename[/\A\d+\.\d+/]
+      lines = ["# Exercise #{number}: #{title}", '#', '# Some teaching prose.', '#']
       lines << "# Expected output: #{expected}" if expected
       lines << "# Hint: #{hint}" if hint
       lines += ['', code, '']

@@ -2,17 +2,17 @@
 
 module Rubites
   module Views
-    class Level < View
+    class Exercise < View
       PANEL_LINES = 8
       GAP = 2
       LABEL = 16
       ERROR_ROOM = 58
 
-      needs :level, :cleared, :total, :status, :result, :difference, :flash, :hint, :author, :tally
+      needs :exercise, :cleared, :total, :status, :result, :difference, :flash, :hint, :author, :tally
 
       def lines
         body = header
-        body.concat(wrapped(level.prose, Screen::WHITE))
+        body.concat(wrapped(exercise.prose, Screen::WHITE))
         body.concat(narration)
         body << ''
         body.concat(panels)
@@ -39,9 +39,9 @@ module Rubites
 
         def heading
           left = [
-            paint("LEVEL #{level.number}", Screen::RUBY, bold: true),
+            paint("EXERCISE #{exercise.number}", Screen::RUBY, bold: true),
             paint('·', Screen::FAINT),
-            paint(level.title, Screen::WHITE, bold: true)
+            paint(exercise.title, Screen::WHITE, bold: true)
           ].join(' ')
           right = paint("#{cleared} / #{total}", Screen::GREY)
 
@@ -63,14 +63,14 @@ module Rubites
         end
 
         def narration
-          return [] unless level.narrator
+          return [] unless exercise.narrator
 
-          ['', *wrapped(level.narrator, Screen::NARRATOR, italic: true)]
+          ['', *wrapped(exercise.narrator, Screen::NARRATOR, italic: true)]
         end
 
         def panels
           width = (inner - GAP) / 2
-          left = panel('expected', level.expected_lines, width, Screen::GREY)
+          left = panel('expected', exercise.expected_lines, width, Screen::GREY)
           right = panel('yours', output, width, output_colour)
 
           [left.size, right.size].max.times.map do |index|
@@ -152,9 +152,9 @@ module Rubites
         end
 
         def hint_lines
-          return [] unless hint && level.hint
+          return [] unless hint && exercise.hint
 
-          ['', *wrapped("hint: #{level.hint}", Screen::YELLOW)]
+          ['', *wrapped("hint: #{exercise.hint}", Screen::YELLOW)]
         end
 
         def footer
